@@ -1,0 +1,6 @@
+# Force LF everywhere. CRLF in shell scripts and Dockerfiles produces
+# genuinely baffling errors inside containers.
+* text=auto eol=lf
+*.png binary
+*.jpg binary
+*.ico binary

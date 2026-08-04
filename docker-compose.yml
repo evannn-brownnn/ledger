@@ -1,0 +1,99 @@
+# Local development stack.
+#
+#   make up      -> start everything
+#   make logs    -> tail the api logs
+#   make migrate -> apply migrations inside the api container
+#
+# The api container mounts your source read-write and runs uvicorn with
+# --reload, so edits on the host are picked up immediately. The database
+# stores its data in a named volume so it survives `docker compose down`.
+# Use `make nuke` when you want a genuinely empty database.
+
+services:
+  db:
+    image: postgres:17-alpine
+    environment:
+      POSTGRES_USER: ledger
+      POSTGRES_PASSWORD: ledger
+      POSTGRES_DB: ledger
+      # Deterministic collation. Without this, index ordering can differ
+      # between machines and cause confusing test failures.
+      POSTGRES_INITDB_ARGS: "--locale=C --encoding=UTF8"
+    command:
+      - postgres
+      # Log every statement that takes >200ms. Invaluable when you start
+      # chasing lock contention on hot accounts.
+      - "-c"
+      - "log_min_duration_statement=200"
+      # Surface deadlocks loudly rather than silently retrying forever.
+      - "-c"
+      - "deadlock_timeout=1s"
+      - "-c"
+      - "log_lock_waits=on"
+      # Track query stats so you can find slow paths later.
+      - "-c"
+      - "shared_preload_libraries=pg_stat_statements"
+    ports:
+      - "5432:5432"
+    volumes:
+      - pgdata:/var/lib/postgresql/data
+    healthcheck:
+      # The api container waits on this before starting.
+      test: ["CMD-SHELL", "pg_isready -U ledger -d ledger"]
+      interval: 2s
+      timeout: 3s
+      retries: 30
+
+  # A second, throwaway database used only by the integration tests, so a
+  # test run never destroys the data you were poking at by hand.
+  db-test:
+    image: postgres:17-alpine
+    environment:
+      POSTGRES_USER: ledger
+      POSTGRES_PASSWORD: ledger
+      POSTGRES_DB: ledger_test
+      POSTGRES_INITDB_ARGS: "--locale=C --encoding=UTF8"
+    command:
+      - postgres
+      # This database is disposable, so trade durability for speed.
+      - "-c"
+      - "fsync=off"
+      - "-c"
+      - "synchronous_commit=off"
+      - "-c"
+      - "full_page_writes=off"
+    ports:
+      - "5433:5432"
+    tmpfs:
+      - /var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U ledger -d ledger_test"]
+      interval: 2s
+      timeout: 3s
+      retries: 30
+
+  api:
+    build:
+      context: .
+      target: dev
+    environment:
+      LEDGER_DATABASE_URL: postgresql+psycopg://ledger:ledger@db:5432/ledger
+      LEDGER_ENVIRONMENT: local
+      LEDGER_LOG_LEVEL: DEBUG
+      LEDGER_LOG_JSON: "false"      # human-readable logs while developing
+    ports:
+      - "8000:8000"
+    volumes:
+      - .:/srv/app
+    depends_on:
+      db:
+        condition: service_healthy
+    command: >
+      uvicorn app.main:app
+      --host 0.0.0.0
+      --port 8000
+      --reload
+      --reload-dir /srv/app/app
+
+volumes:
+  pgdata:

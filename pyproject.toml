@@ -1,0 +1,108 @@
+[project]
+name = "ledger"
+version = "0.1.0"
+description = "An immutable double-entry ledger service."
+requires-python = ">=3.12"
+
+# Runtime dependencies. Pinned with lower bounds only; the lockfile
+# (uv.lock or requirements.txt) is what pins exact versions in CI.
+dependencies = [
+    "fastapi>=0.115",
+    "uvicorn[standard]>=0.32",
+    "sqlalchemy>=2.0.36",
+    "alembic>=1.14",
+    "psycopg[binary,pool]>=3.2",     # psycopg3 — the current driver, not psycopg2
+    "pydantic>=2.10",
+    "pydantic-settings>=2.6",        # env-var config with validation
+    "structlog>=24.4",               # structured JSON logging
+    "prometheus-client>=0.21",       # /metrics endpoint
+    "tenacity>=9.0",                 # retry helper for serialization failures
+]
+
+[project.optional-dependencies]
+dev = [
+    "pytest>=8.3",
+    "pytest-cov>=6.0",
+    "pytest-asyncio>=0.24",
+    "httpx>=0.28",                   # test client transport for FastAPI
+    "ruff>=0.8",                     # linter + formatter (replaces black/isort/flake8)
+    "mypy>=1.13",
+    "types-psycopg2",
+    "locust>=2.32",                  # load testing
+]
+
+[build-system]
+requires = ["setuptools>=75"]
+build-backend = "setuptools.build_meta"
+
+[tool.setuptools.packages.find]
+include = ["app*"]
+
+# ----------------------------------------------------------------------------
+# Ruff: linting and formatting. One tool, very fast.
+# ----------------------------------------------------------------------------
+[tool.ruff]
+line-length = 88
+target-version = "py312"
+
+[tool.ruff.lint]
+select = [
+    "E", "W",   # pycodestyle
+    "F",        # pyflakes
+    "I",        # isort (import ordering)
+    "B",        # bugbear (likely bugs)
+    "C4",       # comprehension simplifications
+    "UP",       # pyupgrade (modern syntax)
+    "SIM",      # simplifications
+    "TID",      # tidy imports
+    "RUF",      # ruff-specific
+]
+ignore = [
+    "E501",     # line length is handled by the formatter
+    "B008",     # FastAPI's Depends() in defaults is idiomatic, not a bug
+]
+
+[tool.ruff.lint.per-file-ignores]
+"tests/*" = ["S101"]  # asserts are the point in tests
+
+# ----------------------------------------------------------------------------
+# mypy: static typing. Strict-ish, but not so strict it blocks you on day one.
+# ----------------------------------------------------------------------------
+[tool.mypy]
+python_version = "3.12"
+warn_return_any = true
+warn_unused_configs = true
+disallow_untyped_defs = true
+disallow_incomplete_defs = true
+no_implicit_optional = true
+warn_redundant_casts = true
+warn_unused_ignores = true
+plugins = ["pydantic.mypy"]
+
+[[tool.mypy.overrides]]
+module = "tests.*"
+disallow_untyped_defs = false
+
+# ----------------------------------------------------------------------------
+# pytest
+# ----------------------------------------------------------------------------
+[tool.pytest.ini_options]
+testpaths = ["tests"]
+pythonpath = ["."]
+addopts = [
+    "-ra",                    # show reasons for all non-passing tests
+    "--strict-markers",
+    "--cov=app",
+    "--cov-report=term-missing",
+]
+markers = [
+    "integration: requires a live Postgres (deselect with '-m \"not integration\"')",
+    "concurrency: exercises real concurrent sessions; slower",
+]
+
+[tool.coverage.report]
+exclude_lines = [
+    "pragma: no cover",
+    "raise NotImplementedError",
+    "if TYPE_CHECKING:",
+]

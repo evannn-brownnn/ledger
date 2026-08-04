@@ -1,0 +1,92 @@
+{
+  "$comment": [
+    "Project settings for Claude Code. Checked into git deliberately.",
+    "Goal: plan-first, small reviewable steps, and no silent edits to the",
+    "files this project exists to make you write yourself.",
+    "Override locally in .claude/settings.local.json (gitignored)."
+  ],
+
+  "permissions": {
+    "$comment_defaultMode": [
+      "'plan' means every session opens in plan mode: Claude proposes an",
+      "approach and waits, instead of editing immediately. Shift+Tab cycles",
+      "modes when you deliberately want it to just go."
+    ],
+    "defaultMode": "plan",
+
+    "$comment_ask": [
+      "'ask' forces a confirmation prompt. The domain and model directories",
+      "are the whole point of this project, so nothing touches them without",
+      "an explicit yes. Same for the two spec test files: a passing suite is",
+      "worthless if the assistant edited the assertions to get there."
+    ],
+    "ask": [
+      "Edit(./app/domain/**)",
+      "Edit(./app/models/**)",
+      "Edit(./tests/test_ledger_domain.py)",
+      "Edit(./tests/test_concurrency.py)",
+      "Edit(./docs/adr/**)",
+      "Edit(./migrations/versions/**)",
+      "Bash(git commit *)",
+      "Bash(git push *)",
+      "Bash(git reset *)",
+      "Bash(git checkout *)",
+      "Bash(make nuke)",
+      "Bash(docker compose down *)"
+    ],
+
+    "$comment_allow": [
+      "Safe, read-only or trivially reversible commands. Approving these",
+      "every time is friction with no safety benefit."
+    ],
+    "allow": [
+      "Bash(make test)",
+      "Bash(make test-unit)",
+      "Bash(make test-integration)",
+      "Bash(make lint)",
+      "Bash(make typecheck)",
+      "Bash(make fmt)",
+      "Bash(make logs)",
+      "Bash(make help)",
+      "Bash(git status)",
+      "Bash(git diff *)",
+      "Bash(git log *)",
+      "Bash(pytest *)",
+      "Bash(ruff *)",
+      "Bash(mypy *)"
+    ],
+
+    "$comment_deny": [
+      "Secrets are never readable. Deny beats ask for anything you would",
+      "never approve anyway."
+    ],
+    "deny": [
+      "Read(./.env)",
+      "Read(./.env.*)",
+      "Bash(curl *)",
+      "Bash(rm -rf *)"
+    ],
+
+    "disableBypassPermissionsMode": "disable"
+  },
+
+  "$comment_autonomy": [
+    "Auto mode lets a classifier approve actions on your behalf. Disabling",
+    "it removes that shortcut from the Shift+Tab cycle entirely, so the",
+    "most permissive state you can reach by accident is 'accept edits'."
+  ],
+  "disableAutoMode": "disable",
+  "useAutoModeDuringPlan": false,
+
+  "$comment_plans": [
+    "Keep plans in the repo so you can read, diff, and revise them like any",
+    "other artifact rather than losing them to the scrollback."
+  ],
+  "plansDirectory": "./plans",
+
+  "$comment_background": [
+    "Background agents run work you are not watching. That is the opposite",
+    "of what this project is for."
+  ],
+  "disableAgentView": true
+}
