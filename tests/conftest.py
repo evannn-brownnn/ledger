@@ -105,39 +105,33 @@ def client(session: Session) -> Iterator[TestClient]:
 
 @pytest.fixture()
 def accounts(session: Session) -> dict[str, object]:
-    """A minimal chart of accounts used across the suite.
+    """A minimal chart of accounts used across the suite."""
+    from app.models import Account
 
-    Uncomment once your models exist.
-
-        from app.models import Account
-        book = {
-            "user_wallet":   "credit",   # you owe the user -> liability
-            "platform_cash": "debit",    # cash you hold    -> asset
-            "fee_revenue":   "credit",   # income
-            "reserve":       "debit",    # asset
-        }
-        made = {}
-        for name, normal in book.items():
-            a = Account(name=name, normal_balance=normal, currency="USD")
-            session.add(a)
-            made[name] = a
-        session.flush()
-        return made
-    """
-    pytest.skip("define your Account model, then enable this fixture")
+    book = {
+        "user_wallet": "credit",  # you owe the user -> liability
+        "platform_cash": "debit",  # cash you hold    -> asset
+        "fee_revenue": "credit",  # income
+        "reserve": "debit",  # asset
+    }
+    made = {}
+    for name, normal in book.items():
+        a = Account(name=name, normal_balance=normal, currency="USD")
+        session.add(a)
+        made[name] = a
+    session.flush()
+    return made
 
 
 @pytest.fixture()
 def eur_account(session: Session) -> object:
-    """A non-USD account, used to prove cross-currency postings are rejected.
-
+    """A non-USD account, used to prove cross-currency postings are rejected."""
     from app.models import Account
+
     a = Account(name="eur_wallet", normal_balance="credit", currency="EUR")
     session.add(a)
     session.flush()
     return a
-    """
-    pytest.skip("define your Account model, then enable this fixture")
 
 
 @pytest.fixture()
@@ -147,21 +141,32 @@ def seeded_accounts(engine) -> dict[str, str]:
     Distinct from `accounts`: those live inside a rolled-back transaction and
     are invisible to other connections. Concurrency tests need real, committed
     rows that every thread can see. Returns {name: account_id}.
-
-        from sqlalchemy.orm import sessionmaker
-        from app.models import Account
-
-        factory = sessionmaker(bind=engine, expire_on_commit=False, future=True)
-        s = factory()
-        made = {}
-        for name, normal in [("platform_cash", "debit"), ("user_wallet", "credit")]:
-            a = Account(name=f"{name}-{uuid.uuid4()}", normal_balance=normal)
-            s.add(a)
-            s.flush()
-            made[name] = a.id
-        s.commit()
-        s.close()
-        yield made
-        # teardown: delete the rows you created
     """
-    pytest.skip("define your Account model, then enable this fixture")
+    import uuid
+
+    from sqlalchemy.orm import sessionmaker
+
+    from app.models import Account
+
+    factory = sessionmaker(bind=engine, expire_on_commit=False, future=True)
+    s = factory()
+    made = {}
+    for name, normal in [("platform_cash", "debit"), ("user_wallet", "credit")]:
+        a = Account(
+            name=f"{name}-{uuid.uuid4()}", normal_balance=normal, currency="USD"
+        )
+        s.add(a)
+        s.flush()
+        made[name] = a.id
+    s.commit()
+    s.close()
+    yield made
+    # teardown: delete the rows you created (so concurrent test runs don't collide)
+    factory2 = sessionmaker(bind=engine, expire_on_commit=False, future=True)
+    s2 = factory2()
+    for account_id in made.values():
+        acc = s2.query(Account).filter_by(id=account_id).first()
+        if acc:
+            s2.delete(acc)
+    s2.commit()
+    s2.close()

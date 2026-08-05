@@ -51,10 +51,10 @@ class AuthenticationError(Exception):
 # 404 for things that do not exist. 409 for state conflicts. 400 is reserved
 # for genuinely malformed requests, which FastAPI handles before we see them.
 STATUS_MAP: dict[type[LedgerError], int] = {
-    InvalidPosting: status.HTTP_422_UNPROCESSABLE_ENTITY,
-    UnbalancedTransaction: status.HTTP_422_UNPROCESSABLE_ENTITY,
-    CurrencyMismatch: status.HTTP_422_UNPROCESSABLE_ENTITY,
-    IdempotencyKeyConflict: status.HTTP_422_UNPROCESSABLE_ENTITY,
+    InvalidPosting: status.HTTP_422_UNPROCESSABLE_CONTENT,
+    UnbalancedTransaction: status.HTTP_422_UNPROCESSABLE_CONTENT,
+    CurrencyMismatch: status.HTTP_422_UNPROCESSABLE_CONTENT,
+    IdempotencyKeyConflict: status.HTTP_422_UNPROCESSABLE_CONTENT,
     AccountNotFound: status.HTTP_404_NOT_FOUND,
     TransactionNotFound: status.HTTP_404_NOT_FOUND,
     AlreadyReversed: status.HTTP_409_CONFLICT,
@@ -79,7 +79,7 @@ def _envelope(code: str, message: str, http_status: int) -> JSONResponse:
 def register_exception_handlers(app: FastAPI) -> None:
     @app.exception_handler(LedgerError)
     async def _domain(_request: Request, exc: LedgerError) -> JSONResponse:
-        http_status = STATUS_MAP.get(type(exc), status.HTTP_422_UNPROCESSABLE_ENTITY)
+        http_status = STATUS_MAP.get(type(exc), status.HTTP_422_UNPROCESSABLE_CONTENT)
         log.info("domain_rejection", code=exc.code, detail=str(exc))
         return _envelope(exc.code, str(exc), http_status)
 
@@ -90,7 +90,7 @@ def register_exception_handlers(app: FastAPI) -> None:
         # Pydantic's raw error list is useful; pass it through under a
         # stable code so clients can parse field-level problems.
         return JSONResponse(
-            status_code=status.HTTP_422_UNPROCESSABLE_ENTITY,
+            status_code=status.HTTP_422_UNPROCESSABLE_CONTENT,
             content={
                 "error": {
                     "code": "validation_error",
