@@ -1,0 +1,39 @@
+# Ruff and mypy run inside the same `api` dev container used everywhere
+# else in this repo (see Makefile) — one environment, one set of pinned
+# versions from pyproject.toml, no drift between "what CI checks" and
+# "what this hook checks".
+#
+# Install once:  pip install pre-commit && pre-commit install
+# Requires the dev image to exist: `docker compose build api` (or `make up`).
+repos:
+  - repo: https://github.com/pre-commit/pre-commit-hooks
+    rev: v5.0.0
+    hooks:
+      - id: trailing-whitespace
+      - id: end-of-file-fixer
+      - id: check-yaml
+      - id: check-added-large-files
+      - id: check-merge-conflict
+
+  - repo: local
+    hooks:
+      - id: ruff-format
+        name: ruff format
+        entry: docker compose run --rm api ruff format app tests
+        language: system
+        pass_filenames: false
+        types: [python]
+
+      - id: ruff-check
+        name: ruff check --fix
+        entry: docker compose run --rm api ruff check --fix app tests
+        language: system
+        pass_filenames: false
+        types: [python]
+
+      - id: mypy
+        name: mypy
+        entry: docker compose run --rm api mypy app
+        language: system
+        pass_filenames: false
+        types: [python]

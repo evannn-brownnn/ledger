@@ -12,13 +12,30 @@ import json
 from typing import Annotated
 
 from fastapi import Depends, Header, Request
+from fastapi.security import HTTPAuthorizationCredentials, HTTPBearer
 from sqlalchemy.orm import Session
 
+from app.api.errors import AuthenticationError
 from app.config import Settings, get_settings
 from app.db import get_session
 
 SessionDep = Annotated[Session, Depends(get_session)]
 SettingsDep = Annotated[Settings, Depends(get_settings)]
+
+# auto_error=False so a missing header raises our AuthenticationError (and
+# therefore our JSON envelope) instead of FastAPI's default {"detail": ...}
+# 403 from HTTPBearer itself.
+_bearer_scheme = HTTPBearer(auto_error=False)
+
+
+async def require_api_key(
+    credentials: Annotated[
+        HTTPAuthorizationCredentials | None, Depends(_bearer_scheme)
+    ],
+    settings: SettingsDep,
+) -> None:
+    if credentials is None or credentials.credentials not in settings.api_keys:
+        raise AuthenticationError()
 
 
 async def idempotency_key(

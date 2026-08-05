@@ -27,20 +27,21 @@ RUN apt-get update \
 FROM base AS deps
 
 COPY pyproject.toml ./
-# Install only the dependency metadata first. `pip install .` would need the
-# source tree, so we resolve deps from pyproject via a throwaway install.
-RUN pip install --upgrade pip setuptools wheel \
-    && pip install ".[dev]" 2>/dev/null || pip install \
-        "fastapi>=0.115" "uvicorn[standard]>=0.32" "sqlalchemy>=2.0.36" \
-        "alembic>=1.14" "psycopg[binary,pool]>=3.2" "pydantic>=2.10" \
-        "pydantic-settings>=2.6" "structlog>=24.4" "prometheus-client>=0.21" \
-        "tenacity>=9.0"
+# setuptools' packages.find needs an "app" package to exist to resolve
+# project metadata, but the source tree isn't copied at this stage (that
+# would defeat layer caching). A stub satisfies discovery so `pip install`
+# can resolve dependencies from pyproject.toml alone — the real source
+# replaces this stub via COPY below, before anything runs.
+RUN mkdir -p app && touch app/__init__.py \
+    && pip install --upgrade pip setuptools wheel \
+    && pip install .
 
 # -----------------------------------------------------------------------------
 FROM deps AS dev
 
-# Dev tooling on top of runtime deps.
-RUN pip install pytest pytest-cov pytest-asyncio httpx ruff mypy locust
+# Adds the dev extras on top of the already-installed runtime deps. Same
+# pyproject.toml, no second list to keep in sync.
+RUN pip install ".[dev]"
 
 COPY . .
 

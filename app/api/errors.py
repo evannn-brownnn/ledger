@@ -36,6 +36,17 @@ from app.observability import get_logger, request_id_ctx
 
 log = get_logger("api.errors")
 
+
+class AuthenticationError(Exception):
+    """Missing or invalid API key.
+
+    Deliberately not a LedgerError subclass: authentication is an API-layer
+    concern (like request validation), not a ledger rule, so it gets its own
+    exception type and handler rather than being folded into the domain
+    hierarchy.
+    """
+
+
 # 422 for semantic rejections the client could fix by sending different data.
 # 404 for things that do not exist. 409 for state conflicts. 400 is reserved
 # for genuinely malformed requests, which FastAPI handles before we see them.
@@ -88,6 +99,16 @@ def register_exception_handlers(app: FastAPI) -> None:
                     "request_id": request_id_ctx.get(),
                 }
             },
+        )
+
+    @app.exception_handler(AuthenticationError)
+    async def _authentication(
+        _request: Request, _exc: AuthenticationError
+    ) -> JSONResponse:
+        return _envelope(
+            "unauthorized",
+            "missing or invalid API key",
+            status.HTTP_401_UNAUTHORIZED,
         )
 
     @app.exception_handler(IntegrityError)

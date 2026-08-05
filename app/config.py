@@ -78,6 +78,14 @@ class Settings(BaseSettings):
     log_json: bool = True
     metrics_enabled: bool = True
 
+    # --- auth ------------------------------------------------------------
+    # Service-to-service API keys, checked as a bearer token. A list, not a
+    # single string, so a key can be rotated by adding the new one and
+    # removing the old one in a separate deploy, with both valid in between.
+    # Same env-parsing convention as cors_origins above: a JSON array, e.g.
+    # LEDGER_API_KEYS=["key-one","key-two"].
+    api_keys: list[str] = Field(default_factory=list)
+
     # --- domain --------------------------------------------------------------
     # Currencies the ledger will accept. Postings that mix currencies, or use
     # one not in this list, must be rejected.
