@@ -7,8 +7,10 @@ from __future__ import annotations
 
 from datetime import datetime
 from decimal import Decimal
+from typing import Any
 
 from sqlalchemy import NUMERIC, CheckConstraint, DateTime, ForeignKey, Index, String
+from sqlalchemy.dialects.postgresql import JSONB
 from sqlalchemy.orm import Mapped, mapped_column
 
 from app.models.base import Base, CreatedAt, UUIDPrimaryKey, utcnow
@@ -73,3 +75,17 @@ class IdempotencyKey(CreatedAt, Base):
     transaction_id: Mapped[str] = mapped_column(
         String(36), ForeignKey("transactions.id"), nullable=False
     )
+
+
+class AuditEvent(UUIDPrimaryKey, CreatedAt, Base):
+    __tablename__ = "audit_events"
+
+    actor: Mapped[str] = mapped_column(String(255), nullable=False)
+    action: Mapped[str] = mapped_column(String(255), nullable=False)
+    # No ForeignKey here on purpose: entity_type/entity_id together form a
+    # polymorphic pointer across every table in this schema (an account, a
+    # transaction, whatever), so no single column could ever be a real FK
+    # target. Validated by application code, not the database.
+    entity_type: Mapped[str] = mapped_column(String(255), nullable=False)
+    entity_id: Mapped[str] = mapped_column(String(36), nullable=False)
+    payload: Mapped[dict[str, Any]] = mapped_column(JSONB, nullable=False)

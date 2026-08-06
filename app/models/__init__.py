@@ -89,12 +89,17 @@ Decide now.
 from __future__ import annotations
 
 from app.models.base import Base, CreatedAt, UUIDPrimaryKey, new_uuid, utcnow
-from app.models.ledger import Account, IdempotencyKey, Transaction, TransactionLine
-
-# TODO(you): AuditEvent
+from app.models.ledger import (
+    Account,
+    AuditEvent,
+    IdempotencyKey,
+    Transaction,
+    TransactionLine,
+)
 
 __all__ = [
     "Account",
+    "AuditEvent",
     "Base",
     "CreatedAt",
     "IdempotencyKey",
