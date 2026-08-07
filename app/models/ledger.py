@@ -17,6 +17,12 @@ from app.models.base import Base, CreatedAt, UUIDPrimaryKey, utcnow
 
 
 class Account(UUIDPrimaryKey, CreatedAt, Base):
+    """A ledger account. Never holds a balance — that is derived from
+    TransactionLine rows. `normal_balance` fixes the sign convention: a
+    debit-normal account's balance is debits minus credits, a credit-normal
+    account's is credits minus debits.
+    """
+
     __tablename__ = "accounts"
     __table_args__ = (
         CheckConstraint(
@@ -31,6 +37,12 @@ class Account(UUIDPrimaryKey, CreatedAt, Base):
 
 
 class Transaction(UUIDPrimaryKey, CreatedAt, Base):
+    """One journal entry: an immutable, balanced group of TransactionLine
+    rows. Never updated or deleted — a correction is a new Transaction with
+    `reverses_id` pointing back at this one. The UNIQUE constraint on
+    `reverses_id` guarantees at most one reversal per original.
+    """
+
     __tablename__ = "transactions"
 
     memo: Mapped[str] = mapped_column(String, nullable=True)
@@ -41,6 +53,12 @@ class Transaction(UUIDPrimaryKey, CreatedAt, Base):
 
 
 class TransactionLine(UUIDPrimaryKey, CreatedAt, Base):
+    """One side (debit or credit) of a Transaction, against a single
+    Account. A Transaction's lines must sum to zero across debits and
+    credits — that invariant is enforced by domain code, not a constraint
+    here, since it spans multiple rows.
+    """
+
     __tablename__ = "transaction_lines"
     __table_args__ = (
         CheckConstraint("direction IN ('debit', 'credit')", name="direction_valid"),
@@ -68,6 +86,12 @@ class TransactionLine(UUIDPrimaryKey, CreatedAt, Base):
 
 
 class IdempotencyKey(CreatedAt, Base):
+    """Records that a client-supplied key has already produced a
+    Transaction. `key` is the primary key, so a concurrent duplicate insert
+    fails on the UNIQUE constraint rather than a check-then-act race.
+    `request_hash` lets a replayed key be told apart from a reused one.
+    """
+
     __tablename__ = "idempotency_keys"
 
     key: Mapped[str] = mapped_column(String(255), primary_key=True)
@@ -78,6 +102,11 @@ class IdempotencyKey(CreatedAt, Base):
 
 
 class AuditEvent(UUIDPrimaryKey, CreatedAt, Base):
+    """A record of who did what to which entity, independent of the
+    financial journal. `entity_type`/`entity_id` point at a row in any
+    other table, which is why there is no ForeignKey here.
+    """
+
     __tablename__ = "audit_events"
 
     actor: Mapped[str] = mapped_column(String(255), nullable=False)
