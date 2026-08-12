@@ -4,8 +4,11 @@ version = "0.1.0"
 description = "An immutable double-entry ledger service."
 requires-python = ">=3.12"
 
-# Runtime dependencies. Pinned with lower bounds only; the lockfile
-# (uv.lock or requirements.txt) is what pins exact versions in CI.
+# Runtime dependencies. Lower bounds only — this file records what the
+# project needs, not what it was last built against. Exact versions live in
+# requirements.lock (runtime) and requirements-dev.lock (runtime + dev),
+# which is what CI and the Docker images install. Regenerate with
+# `make lock` after changing anything below.
 dependencies = [
     "fastapi>=0.115",
     "uvicorn[standard]>=0.32",

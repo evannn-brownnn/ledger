@@ -5,7 +5,7 @@
 .DEFAULT_GOAL := help
 .PHONY: help up down logs shell psql migrate makemigration downgrade \
         test test-unit test-integration lint fmt typecheck check seed \
-        load-test nuke build-prod
+        load-test nuke build-prod lock
 
 help:  ## Show this help
 	@grep -E '^[a-zA-Z_-]+:.*?## .*$$' $(MAKEFILE_LIST) \
@@ -32,6 +32,17 @@ shell:  ## Shell inside the api container
 
 psql:  ## Interactive psql against the dev database
 	docker compose exec db psql -U ledger -d ledger
+
+# --- dependencies ------------------------------------------------------------
+
+# Runs on the host rather than in a container: uv resolves for the target
+# interpreter via --python-version, so the host's own Python is irrelevant,
+# and this is the one thing you need before an image exists to run it in.
+lock:  ## Regenerate the lockfiles from pyproject.toml
+	@command -v uv >/dev/null || \
+		(echo 'uv not installed: curl -LsSf https://astral.sh/uv/install.sh | sh'; exit 1)
+	uv pip compile pyproject.toml --python-version 3.12 -o requirements.lock
+	uv pip compile pyproject.toml --extra dev --python-version 3.12 -o requirements-dev.lock
 
 # --- migrations --------------------------------------------------------------
 

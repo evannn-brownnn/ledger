@@ -23,13 +23,24 @@ jobs:
         with:
           python-version: ${{ env.PYTHON_VERSION }}
           cache: pip
-      - run: pip install -e ".[dev]"
+      - run: pip install -r requirements-dev.lock && pip install -e . --no-deps
       - name: Ruff (lint)
         run: ruff check app tests
       - name: Ruff (format check)
         run: ruff format --check app tests
       - name: mypy
         run: mypy app
+
+      # uv treats an existing output file as pinning preferences, so this
+      # only produces a diff when pyproject.toml has changed in a way the
+      # current pins no longer satisfy — not every time a dependency cuts
+      # a new release upstream.
+      - name: Lockfiles are in sync with pyproject.toml
+        run: |
+          pip install uv
+          make lock
+          git diff --exit-code -- requirements.lock requirements-dev.lock \
+            || { echo "::error::Lockfiles are stale. Run 'make lock' and commit the result."; exit 1; }
 
   test:
     runs-on: ubuntu-latest
@@ -60,7 +71,7 @@ jobs:
         with:
           python-version: ${{ env.PYTHON_VERSION }}
           cache: pip
-      - run: pip install -e ".[dev]"
+      - run: pip install -r requirements-dev.lock && pip install -e . --no-deps
 
       - name: Migrations apply cleanly
         run: alembic upgrade head

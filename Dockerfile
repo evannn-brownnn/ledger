@@ -26,22 +26,30 @@ RUN apt-get update \
 # -----------------------------------------------------------------------------
 FROM base AS deps
 
-COPY pyproject.toml ./
+COPY pyproject.toml requirements.lock ./
 # setuptools' packages.find needs an "app" package to exist to resolve
 # project metadata, but the source tree isn't copied at this stage (that
 # would defeat layer caching). A stub satisfies discovery so `pip install`
 # can resolve dependencies from pyproject.toml alone — the real source
 # replaces this stub via COPY below, before anything runs.
+#
+# Dependencies come from the lockfile, not from resolving pyproject.toml,
+# so the image built today matches the one built last month. The project
+# itself is then installed --no-deps: its requirements are already present
+# at the exact pinned versions, and letting pip re-resolve here would
+# silently defeat the lock.
 RUN mkdir -p app && touch app/__init__.py \
     && pip install --upgrade pip setuptools wheel \
-    && pip install .
+    && pip install -r requirements.lock \
+    && pip install --no-deps .
 
 # -----------------------------------------------------------------------------
 FROM deps AS dev
 
-# Adds the dev extras on top of the already-installed runtime deps. Same
-# pyproject.toml, no second list to keep in sync.
-RUN pip install ".[dev]"
+# The dev lock is a superset of the runtime lock, so this adds the dev
+# tooling without disturbing the versions already installed above.
+COPY requirements-dev.lock ./
+RUN pip install -r requirements-dev.lock
 
 COPY . .
 
