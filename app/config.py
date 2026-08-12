@@ -35,8 +35,11 @@ class Settings(BaseSettings):
         return self.environment == "production"
 
     # --- database ------------------------------------------------------------
-    database_url: PostgresDsn = Field(
-        default="postgresql+psycopg://ledger:ledger@localhost:5432/ledger",  # type: ignore[arg-type]
+    # The ignore is on the assignment, not the argument: pydantic validates
+    # this str into a PostgresDsn at runtime, but mypy only sees str being
+    # assigned where PostgresDsn is declared.
+    database_url: PostgresDsn = Field(  # type: ignore[assignment]
+        default="postgresql+psycopg://ledger:ledger@localhost:5432/ledger",
         description="SQLAlchemy URL. Must use the psycopg (v3) driver.",
     )
 

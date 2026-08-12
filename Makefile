@@ -58,10 +58,19 @@ downgrade:  ## Roll back one migration
 
 # --- quality -----------------------------------------------------------------
 
+# tests/conftest.py reads LEDGER_TEST_DATABASE_URL to decide whether a
+# database is reachable, and skips every database-backed test if it is not.
+# Setting only LEDGER_DATABASE_URL left it on its localhost:5433 default,
+# which resolves to nothing inside the api container — so the whole
+# integration suite skipped and the run still reported success. Both names
+# are set, from one definition, so they cannot drift apart again.
+TEST_DB_URL := postgresql+psycopg://ledger:ledger@db-test:5432/ledger_test
+
 test:  ## Run the full suite (spins up the throwaway test db)
 	docker compose up -d db-test
 	docker compose run --rm \
-		-e LEDGER_DATABASE_URL=postgresql+psycopg://ledger:ledger@db-test:5432/ledger_test \
+		-e LEDGER_DATABASE_URL=$(TEST_DB_URL) \
+		-e LEDGER_TEST_DATABASE_URL=$(TEST_DB_URL) \
 		api pytest
 
 test-unit:  ## Fast tests only, no database
@@ -70,7 +79,8 @@ test-unit:  ## Fast tests only, no database
 test-integration:  ## Database-backed tests only
 	docker compose up -d db-test
 	docker compose run --rm \
-		-e LEDGER_DATABASE_URL=postgresql+psycopg://ledger:ledger@db-test:5432/ledger_test \
+		-e LEDGER_DATABASE_URL=$(TEST_DB_URL) \
+		-e LEDGER_TEST_DATABASE_URL=$(TEST_DB_URL) \
 		api pytest -m integration
 
 lint:  ## Lint
