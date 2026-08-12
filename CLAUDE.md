@@ -121,6 +121,9 @@ pytest invocations.
 
 ## Where to read
 
+- `docs/STATUS.md` — what is in flight, what is known-broken, and which
+  test failures are expected. Read this first; it is the one file that
+  tells you whether a red suite is news. Update it when that changes.
 - `docs/MILESTONES.md` — the build plan and current stage
 - `docs/ARCHITECTURE.md` — layering and scaling path
 - `docs/adr/` — decisions that are settled and not up for casual revision
