@@ -1,15 +1,18 @@
-"""ORM models for the ledger domain.
-
->>> THIS IS YOURS TO WRITE. See app/models/__init__.py for the full spec. <<<
-"""
-
 from __future__ import annotations
 
 from datetime import datetime
 from decimal import Decimal
 from typing import Any
 
-from sqlalchemy import NUMERIC, CheckConstraint, DateTime, ForeignKey, Index, String
+from sqlalchemy import (
+    NUMERIC,
+    CheckConstraint,
+    DateTime,
+    ForeignKey,
+    Index,
+    PrimaryKeyConstraint,
+    String,
+)
 from sqlalchemy.dialects.postgresql import JSONB
 from sqlalchemy.orm import Mapped, mapped_column
 
@@ -44,6 +47,34 @@ class Transaction(UUIDPrimaryKey, CreatedAt, Base):
     """
 
     __tablename__ = "transactions"
+    __table_args__ = (
+        # Column order here is deliberate, not decorative. Left to declaration
+        # order this would come out (created_at, id), the way transaction_lines
+        # did — and then a lookup by id alone could not use the PK index at all,
+        # because a B-tree only helps when the filter includes the leftmost
+        # column. Looking a transaction up by id is the single most common
+        # access path in the system (reverse_transaction, GET by id), so id
+        # leads. An explicit PrimaryKeyConstraint is the only way to pin the
+        # order independently of where the columns happen to be declared.
+        PrimaryKeyConstraint("id", "created_at"),
+    )
+
+    # Overrides CreatedAt's plain column to join the PK: Postgres requires the
+    # partition key to be part of the primary key, and this table is destined
+    # for monthly RANGE partitioning on created_at. Decided up front because
+    # retrofitting it onto a populated table means a full copy — see
+    # docs/adr/0003-balance-snapshots-and-partitioning.md.
+    #
+    # index=True is kept (unlike transaction_lines, which drops it): created_at
+    # is the *trailing* PK column here, so the PK index does nothing for
+    # created_at range scans and a standalone index still earns its place.
+    created_at: Mapped[datetime] = mapped_column(
+        DateTime(timezone=True),
+        primary_key=True,
+        default=utcnow,
+        nullable=False,
+        index=True,
+    )
 
     memo: Mapped[str] = mapped_column(String, nullable=True)
     currency: Mapped[str] = mapped_column(String(3), nullable=False)
