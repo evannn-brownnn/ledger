@@ -21,6 +21,7 @@ import structlog
 from fastapi import Request, Response
 from prometheus_client import CONTENT_TYPE_LATEST, Counter, Histogram, generate_latest
 from starlette.middleware.base import BaseHTTPMiddleware
+from structlog.typing import EventDict, Processor
 
 from app.config import get_settings
 
@@ -56,7 +57,7 @@ RETRIES = Counter(
 )
 
 
-def _add_request_id(_logger: object, _name: str, event_dict: dict) -> dict:
+def _add_request_id(_logger: object, _name: str, event_dict: EventDict) -> EventDict:
     event_dict["request_id"] = request_id_ctx.get()
     return event_dict
 
@@ -69,7 +70,10 @@ def configure_logging() -> None:
     """
     settings = get_settings()
 
-    shared = [
+    # Annotated rather than inferred: the elements are heterogeneous (plain
+    # functions and processor instances), so mypy widens the list to
+    # list[object] and then rejects it where structlog wants processors.
+    shared: list[Processor] = [
         structlog.contextvars.merge_contextvars,
         structlog.processors.add_log_level,
         structlog.processors.TimeStamper(fmt="iso", utc=True),
