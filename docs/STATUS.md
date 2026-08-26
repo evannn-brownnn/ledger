@@ -9,39 +9,22 @@ project is developed on two (WSL2 desktop, native Ubuntu laptop) — anything
 worth remembering has to live here or it does not survive the switch.
 
 Keep it short. Delete entries as they stop being true. Last updated
-2026-08-12.
+2026-08-26.
 
 ## Branches
 
 | Branch | Contains | State |
 |---|---|---|
 | `main` | infra, docs, schema migrations | green on lint/typecheck, see "expected red" below |
-| `wip/transactions-composite-pk` | `Transaction` PK change + its unfinished migration | **not stable, do not merge** |
-| `feat/account-model` | stale, fully contained in `main` | safe to delete |
+| `wip/transactions-composite-pk` | `Transaction` PK change + the FK removals chosen alongside it | migration finished and verified; ready to merge |
 
-Nothing has been pushed. `origin/main` is behind local `main`; there are no
-credentials on either machine yet, so the first push and the first CI run
-are both still pending.
+Both branches are pushed to `github.com/evannn-brownnn/ledger`. `main` and
+`origin/main` are in sync. `feat/account-model` has been deleted — it was
+fully contained in `main`.
 
 ## Known issues
 
-**1 · `wip/transactions-composite-pk` has an empty migration.** *(owner)*
-
-`Transaction` declares `PrimaryKeyConstraint("id", "created_at")`, but
-migration `0da3c0e77b31` is an autogenerate draft with `pass` in both
-`upgrade()` and `downgrade()`. Alembic does not detect primary key changes,
-so nothing was generated. After applying every migration the database still
-reports:
-
-```
-pk_transactions | PRIMARY KEY (id)
-```
-
-The model and the schema disagree. Finishing it needs hand-written DDL to
-drop and recreate the constraint, plus a real `downgrade()`. This is why
-the branch exists instead of the work being on `main`.
-
-**2 · Concurrency tests cannot build their schema.** *(plumbing, unfixed)*
+**1 · Concurrency tests cannot build their schema.** *(plumbing, unfixed)*
 
 `real_sessions` in `tests/test_concurrency.py` depends on `engine` but not
 on `_schema`. `test_concurrency.py` sorts before `test_ledger_domain.py`,
@@ -59,10 +42,17 @@ signature is plumbing, but it is the owner's call.
 passed, 4 errors**. That is milestone 1 being open, not breakage: the spec
 tests were written first and fail until the domain is built.
 
-The CI `test` job will therefore be red on the first push. The `lint` job
-(ruff + ruff format + mypy + lock drift) is green and should stay that way.
+The CI `test` job is therefore red, and will stay red until milestone 1
+lands. The `lint` job (ruff + ruff format + mypy + lock drift) is green and
+should stay that way.
 
 Do not "fix" these by weakening the tests. See `CLAUDE.md`.
+
+One gap worth knowing: CI runs `ruff check app tests`, so `migrations/` is
+**not** linted, and it runs `alembic upgrade head` plus a full
+`downgrade base` / `upgrade head` cycle but **not** `alembic check`. Model
+drift against the migrations is caught at review time or not at all — run
+`alembic check` by hand after touching `app/models/`.
 
 ## Dependencies
 

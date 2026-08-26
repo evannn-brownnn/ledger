@@ -29,7 +29,7 @@ new reversing entries, never edits or deletes.
 **Bad**
 
 - Reads get more expensive as history grows. Mitigated by balance snapshots
-  (ADR 0003, milestone 7), not by abandoning the design.
+  (ADR 0003, milestone 8), not by abandoning the design.
 - Storage grows forever. This is correct for a financial record and is
   managed with partitioning and archival, not deletion.
 - More moving parts than a single mutable column.

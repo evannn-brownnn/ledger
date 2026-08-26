@@ -78,8 +78,15 @@ class Transaction(UUIDPrimaryKey, CreatedAt, Base):
 
     memo: Mapped[str] = mapped_column(String, nullable=True)
     currency: Mapped[str] = mapped_column(String(3), nullable=False)
+    # No ForeignKey. A bare-id FK cannot reference the (id, created_at)
+    # key, and we chose not to carry a composite one — ADR 0003 "Decision:
+    # foreign keys". Composite FKs to a partitioned table DO work on PG 12+;
+    # this is a simplicity trade, not a platform limit. Don't "fix" it back.
+    #
+    # The UNIQUE survives, so reverse-once stays a database guarantee
+    # (ADR 0002). Only "the target exists" moves to domain code.
     reverses_id: Mapped[str | None] = mapped_column(
-        String(36), ForeignKey("transactions.id"), nullable=True, unique=True
+        String(36), nullable=True, unique=True
     )
 
 
@@ -104,8 +111,14 @@ class TransactionLine(UUIDPrimaryKey, CreatedAt, Base):
         DateTime(timezone=True), primary_key=True, default=utcnow, nullable=False
     )
 
+    # Conceptual link, not a constraint — see Transaction.reverses_id.
+    # An orphaned line is now possible at the database level and only
+    # post_transaction() prevents it. This is the one place the trade
+    # actually costs something: an orphaned line is a hole in the journal,
+    # unlike an orphaned idempotency key. Reconciliation (milestone 5)
+    # should look for them.
     transaction_id: Mapped[str] = mapped_column(
-        String(36), ForeignKey("transactions.id"), nullable=False, index=True
+        String(36), nullable=False, index=True
     )
     # No standalone index here: the (account_id, created_at) composite above
     # already serves account_id-only lookups via the leftmost-prefix rule.
@@ -127,9 +140,9 @@ class IdempotencyKey(CreatedAt, Base):
 
     key: Mapped[str] = mapped_column(String(255), primary_key=True)
     request_hash: Mapped[str] = mapped_column(String(64), nullable=False)
-    transaction_id: Mapped[str] = mapped_column(
-        String(36), ForeignKey("transactions.id"), nullable=False
-    )
+    # Conceptual link. ADR 0003 accepts orphans here as harmless: a race
+    # where the key was inserted and the posting then failed.
+    transaction_id: Mapped[str] = mapped_column(String(36), nullable=False)
 
 
 class AuditEvent(UUIDPrimaryKey, CreatedAt, Base):
