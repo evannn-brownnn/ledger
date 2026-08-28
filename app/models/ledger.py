@@ -29,9 +29,11 @@ class Account(UUIDPrimaryKey, CreatedAt, Base):
     __tablename__ = "accounts"
     __table_args__ = (
         CheckConstraint(
-            "normal_balance IN ('debit', 'credit')",
-            name="normal_balance_valid",
+            "normal_balance IN ('debit', 'credit')", name="normal_balance_valid",
         ),
+        CheckConstraint(
+            "currency ~ '^[A-Z]{3}$'", name="currency_format"
+        )
     )
 
     name: Mapped[str] = mapped_column(String(255), unique=True, nullable=False)
@@ -57,6 +59,12 @@ class Transaction(UUIDPrimaryKey, CreatedAt, Base):
         # leads. An explicit PrimaryKeyConstraint is the only way to pin the
         # order independently of where the columns happen to be declared.
         PrimaryKeyConstraint("id", "created_at"),
+        # Format only. WHICH currencies are allowed lives in
+        # settings.supported_currencies — a CHECK naming 'USD' would drift
+        # from config and need a migration to add one. And the rule that
+        # every leg's account currency matches this one spans three tables,
+        # so no CHECK can see it: that stays CurrencyMismatch in the domain.
+        CheckConstraint("currency ~ '^[A-Z]{3}$'", name="currency_format"),
     )
 
     # Overrides CreatedAt's plain column to join the PK: Postgres requires the
@@ -76,7 +84,7 @@ class Transaction(UUIDPrimaryKey, CreatedAt, Base):
         index=True,
     )
 
-    memo: Mapped[str] = mapped_column(String, nullable=True)
+    memo: Mapped[str] = mapped_column(String(255), nullable=False)
     currency: Mapped[str] = mapped_column(String(3), nullable=False)
     # No ForeignKey. A bare-id FK cannot reference the (id, created_at)
     # key, and we chose not to carry a composite one — ADR 0003 "Decision:
@@ -102,6 +110,15 @@ class TransactionLine(UUIDPrimaryKey, CreatedAt, Base):
         CheckConstraint("direction IN ('debit', 'credit')", name="direction_valid"),
         CheckConstraint("amount > 0", name="amount_positive"),
         Index(None, "account_id", "created_at"),
+        # Same reasoning as Transaction: left to declaration order this comes
+        # out (created_at, id), and then a lookup by line id alone cannot use
+        # the PK index at all. The performance case here is weaker than on
+        # transactions — lines are fetched by transaction_id or
+        # (account_id, created_at), both indexed, and nobody looks a line up
+        # by its bare id. This is for consistency, and because reordering a
+        # PK is free on an empty table and a full index rebuild once it
+        # isn't.
+        PrimaryKeyConstraint("id", "created_at"),
     )
 
     # Overrides CreatedAt's plain column: this table's PK is (id, created_at),
@@ -152,6 +169,21 @@ class AuditEvent(UUIDPrimaryKey, CreatedAt, Base):
     """
 
     __tablename__ = "audit_events"
+    __table_args__ = (
+        # An audit log is read as a timeline for one entity, so created_at
+        # trails the polymorphic pointer and the ordering comes free from the
+        # index instead of a sort — same shape as (account_id, created_at) on
+        # transaction_lines.
+        #
+        # entity_type leads for the (entity_type) prefix, not for selectivity:
+        # entity_id is a UUID, so once you know it, entity_type narrows
+        # nothing. If a type-scoped scan turns out to be a query nobody runs,
+        # (entity_id, created_at) does the same work in two columns.
+        #
+        # ix_audit_events_created_at (from the CreatedAt mixin) stays: it
+        # serves "recent activity across everything", which this cannot.
+        Index(None, "entity_type", "entity_id", "created_at"),
+    )
 
     actor: Mapped[str] = mapped_column(String(255), nullable=False)
     action: Mapped[str] = mapped_column(String(255), nullable=False)

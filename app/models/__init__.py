@@ -72,7 +72,7 @@ SPEC — what you need to define
     created_at
 
 --------------------------------------------------------------------------
-PARTITIONING (milestone 5, but design for it now)
+PARTITIONING (milestone 8, but design for it now)
 --------------------------------------------------------------------------
 `transactions` and `transaction_lines` should eventually be RANGE-partitioned
 on created_at, monthly. Two consequences you must accept up front:

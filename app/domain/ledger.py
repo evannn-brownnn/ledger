@@ -130,7 +130,7 @@ def balance(
     never be one. See docs/adr/0001.
 
     Performance note: this is a full scan of the account's lines. That is
-    correct and fine until it isn't — milestone 5 adds snapshots. Do not
+    correct and fine until it isn't — milestone 8 adds snapshots. Do not
     optimise it before you have measured it.
     """
     raise NotImplementedError
