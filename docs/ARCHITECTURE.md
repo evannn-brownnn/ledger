@@ -86,9 +86,18 @@ The system is designed so none of these are retrofits:
 | 6 | Outbox table for event emission | No commit/publish split-brain |
 
 Partitioning is the one that must be decided early: a partitioned table's
-primary key has to include the partition key, and you cannot have foreign
-keys referencing a partitioned table. Retrofitting it onto a large live
-table is genuinely painful.
+primary key has to include the partition key. Retrofitting that onto a large
+live table is genuinely painful, which is why `transactions` and
+`transaction_lines` already carry `(id, created_at)` primary keys — see
+ADR 0003.
+
+Foreign keys referencing a partitioned table **are** supported, from
+Postgres 12 onward, provided they reference the full unique key — so a
+composite `(transaction_id, transaction_created_at)`, not a bare
+`transaction_id`. This project drops those FKs anyway, as a deliberate
+simplicity trade rather than a platform limit. ADR 0003 records the
+alternatives; an earlier draft of both documents claimed the FKs were
+impossible, which was true of Postgres 11 and has not been since 2019.
 
 ## Failure handling
 

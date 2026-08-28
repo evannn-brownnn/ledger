@@ -20,8 +20,8 @@ different places. Fixed here by not reusing them at all.
 | # | Milestone | Owner | Status | Scaling stage(s) touched |
 |---|---|---|---|---|
 | 0 | Scaffolding: infra layer, CI, ADRs 0001–0002 | infra | done | stage 1 (implicit) |
-| 1 | Models + domain core — `Account`, `Transaction`, `TransactionLine`, `IdempotencyKey`, `AuditEvent`; `post_transaction`, `reverse_transaction`, `balance`, `trial_balance`, `account_statement`; the 4 stub route bodies | **owner** | not started | stage 1 |
-| 1.5 | ADR 0003 — partitioning primary-key shape + snapshot design, decided alongside milestone 1 so the model PK doesn't need retrofitting | **owner + infra** | not started | stages 3, 4 |
+| 1 | Models + domain core — `Account`, `Transaction`, `TransactionLine`, `IdempotencyKey`, `AuditEvent`; `post_transaction`, `reverse_transaction`, `balance`, `trial_balance`, `account_statement`; the 4 stub route bodies | **owner** | **in progress** — all five models done and constrained; domain functions and route bodies still `NotImplementedError` | stage 1 |
+| 1.5 | ADR 0003 — partitioning primary-key shape + snapshot design, decided alongside milestone 1 so the model PK doesn't need retrofitting | **owner + infra** | **done** — ADR accepted 2026-08-26 (amended, two Postgres claims corrected); `(id, created_at)` PKs applied to both journal tables | stages 3, 4 |
 | 2 | API-level HTTP test suite | infra | not started | — |
 | 3 | Concurrency proof — the three non-skipped tests in `tests/test_concurrency.py`; optional `withdraw()` / `InsufficientFunds` stretch | **owner** | not started | stage 1 |
 | 4 | Service-to-service API-key auth | infra | not started | — |

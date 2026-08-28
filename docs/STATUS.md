@@ -9,19 +9,23 @@ project is developed on two (WSL2 desktop, native Ubuntu laptop) — anything
 worth remembering has to live here or it does not survive the switch.
 
 Keep it short. Delete entries as they stop being true. Last updated
-2026-08-27.
+2026-08-28.
 
 ## Branches
 
 | Branch | Contains | State |
 |---|---|---|
-| `main` | infra, docs, schema migrations | green on lint/typecheck, see "expected red" below |
-| `wip/transactions-composite-pk` | two migrations: `0da3c0e77b31` (PK swap + FK removals) and `c0e492405f67` (constraint hardening) | both verified; ready to merge |
+| `main` | everything | `lint` and `docker` green, `test` red — see "expected red" below |
 
-`c0e492405f67` adds the currency format CHECK on `accounts` and
-`transactions`, the `(entity_type, entity_id, created_at)` index on
-`audit_events`, `memo` NOT NULL at `varchar(255)`, and reorders the
-`transaction_lines` PK to `(id, created_at)`.
+`wip/transactions-composite-pk` was fast-forwarded into `main` on
+2026-08-28 and can be deleted. It carried two migrations:
+
+- `0da3c0e77b31` — `transactions` PK to `(id, created_at)`, and the removal
+  of the three FKs that referenced `transactions(id)`.
+- `c0e492405f67` — currency format CHECK on `accounts` and `transactions`,
+  the `(entity_type, entity_id, created_at)` index on `audit_events`,
+  `memo` NOT NULL at `varchar(255)`, and the `transaction_lines` PK
+  reordered to `(id, created_at)`.
 
 `app/api/schemas.py` caps `memo` input at `max_length=255`, matching the
 column exactly. Keep them in step — a memo the API accepts but the column
@@ -44,16 +48,37 @@ Adding `_schema` to the fixture's parameters fixes it. Left alone because
 that file is a spec file under `CLAUDE.md`'s division of labour — a fixture
 signature is plumbing, but it is the owner's call.
 
+Note this reproduces **locally only**. CI applies migrations in a separate
+step before pytest runs, so the tables already exist there and the bug is
+invisible. Do not expect CI to catch it.
+
 ## Expected red — not regressions
 
 `app/domain/ledger.py` is unimplemented, so every domain function raises
-`NotImplementedError`. `make test` currently reports **21 failed, 11
-passed, 4 errors**. That is milestone 1 being open, not breakage: the spec
-tests were written first and fail until the domain is built.
+`NotImplementedError`. That is milestone 1 being open, not breakage: the
+spec tests were written first and fail until the domain is built.
 
-The CI `test` job is therefore red, and will stay red until milestone 1
-lands. The `lint` job (ruff + ruff format + mypy + lock drift) is green and
-should stay that way.
+**Local and CI report different numbers, and both are expected:**
+
+| Where | Result |
+|---|---|
+| `make test` locally | **21 failed, 11 passed, 4 errors** |
+| CI `test` job | **24 failed, 11 passed, 1 skipped** |
+
+The totals reconcile (21+4 = 24+1 = 25). The difference is the three
+concurrency tests. CI runs `alembic upgrade head` as a step *before*
+pytest, so the schema exists and those tests run and fail on
+`NotImplementedError` like everything else. Locally nothing has applied the
+migrations by the time the fixtures execute, so they **error** in setup
+instead — known issue 1 below. CI has been masking that bug all along.
+
+Treat a red `test` job as news only if the numbers move off one of those
+two lines.
+
+The `lint` job (ruff + ruff format + mypy + lock drift) and the `docker`
+job are both green and should stay that way. First green CI run on this
+repo since 2026-08-12 was 2026-08-28; both migrations applied and reversed
+cleanly against a Postgres built from empty.
 
 Do not "fix" these by weakening the tests. See `CLAUDE.md`.
 
