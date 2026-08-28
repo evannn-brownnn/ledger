@@ -23,10 +23,9 @@ Keep it short. Delete entries as they stop being true. Last updated
 `audit_events`, `memo` NOT NULL at `varchar(255)`, and reorders the
 `transaction_lines` PK to `(id, created_at)`.
 
-**Known mismatch:** `app/api/schemas.py` caps `memo` input at
-`max_length=256`, one more than the column holds. A 256-character memo
-passes Pydantic and fails on INSERT — a 500 where a 422 belongs. Move one
-of the two numbers.
+`app/api/schemas.py` caps `memo` input at `max_length=255`, matching the
+column exactly. Keep them in step — a memo the API accepts but the column
+cannot hold is a 500 where a 422 belongs.
 
 Both branches are pushed to `github.com/evannn-brownnn/ledger`. `main` and
 `origin/main` are in sync. `feat/account-model` has been deleted — it was

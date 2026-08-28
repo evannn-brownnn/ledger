@@ -39,7 +39,9 @@ class TransactionIn(BaseModel):
 
     legs: list[LegIn] = Field(min_length=2, max_length=64)
     currency: Currency = "USD"
-    memo: str = Field(default="", max_length=256)
+    # 255 matches transactions.memo exactly. They must not drift: a memo the
+    # API accepts but the column cannot hold is a 500 where a 422 belongs.
+    memo: str = Field(default="", max_length=255)
 
     @field_validator("legs")
     @classmethod
@@ -110,7 +112,9 @@ class BalanceOut(BaseModel):
 class ReversalIn(BaseModel):
     model_config = ConfigDict(extra="forbid")
 
-    memo: str = Field(default="", max_length=256)
+    # 255 matches transactions.memo exactly. They must not drift: a memo the
+    # API accepts but the column cannot hold is a 500 where a 422 belongs.
+    memo: str = Field(default="", max_length=255)
 
 
 class StatementLine(BaseModel):
