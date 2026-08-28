@@ -29,11 +29,10 @@ class Account(UUIDPrimaryKey, CreatedAt, Base):
     __tablename__ = "accounts"
     __table_args__ = (
         CheckConstraint(
-            "normal_balance IN ('debit', 'credit')", name="normal_balance_valid",
+            "normal_balance IN ('debit', 'credit')",
+            name="normal_balance_valid",
         ),
-        CheckConstraint(
-            "currency ~ '^[A-Z]{3}$'", name="currency_format"
-        )
+        CheckConstraint("currency ~ '^[A-Z]{3}$'", name="currency_format"),
     )
 
     name: Mapped[str] = mapped_column(String(255), unique=True, nullable=False)
@@ -134,9 +133,7 @@ class TransactionLine(UUIDPrimaryKey, CreatedAt, Base):
     # actually costs something: an orphaned line is a hole in the journal,
     # unlike an orphaned idempotency key. Reconciliation (milestone 5)
     # should look for them.
-    transaction_id: Mapped[str] = mapped_column(
-        String(36), nullable=False, index=True
-    )
+    transaction_id: Mapped[str] = mapped_column(String(36), nullable=False, index=True)
     # No standalone index here: the (account_id, created_at) composite above
     # already serves account_id-only lookups via the leftmost-prefix rule.
     account_id: Mapped[str] = mapped_column(
