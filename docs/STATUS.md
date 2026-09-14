@@ -9,7 +9,7 @@ project is developed on two (WSL2 desktop, native Ubuntu laptop) — anything
 worth remembering has to live here or it does not survive the switch.
 
 Keep it short. Delete entries as they stop being true. Last updated
-2026-08-28.
+2026-09-14.
 
 ## Branches
 
@@ -62,8 +62,8 @@ spec tests were written first and fail until the domain is built.
 
 | Where | Result |
 |---|---|
-| `make test` locally | **21 failed, 11 passed, 4 errors** |
-| CI `test` job | **24 failed, 11 passed, 1 skipped** |
+| `make test` locally | **21 failed, 33 passed, 4 errors** |
+| CI `test` job | **24 failed, 33 passed, 1 skipped** |
 
 The totals reconcile (21+4 = 24+1 = 25). The difference is the three
 concurrency tests. CI runs `alembic upgrade head` as a step *before*
@@ -71,6 +71,13 @@ pytest, so the schema exists and those tests run and fail on
 `NotImplementedError` like everything else. Locally nothing has applied the
 migrations by the time the fixtures execute, so they **error** in setup
 instead — known issue 1 below. CI has been masking that bug all along.
+
+The passed count moved from 11 to 33 on 2026-09-14: `tests/test_partitioning.py`
+(16 cases) and `tests/test_idempotency_chaos.py` (6 cases) were added,
+covering `app/partitioning` and `app/idempotency` (ADR 0004, ADR 0005).
+Both are pure in-process tests with no database dependency, so they pass
+identically in both environments and the reconciliation above is
+unaffected — only the passed figure moved, by the same +22 in each row.
 
 Treat a red `test` job as news only if the numbers move off one of those
 two lines.
