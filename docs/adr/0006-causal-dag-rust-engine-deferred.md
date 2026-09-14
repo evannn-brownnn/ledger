@@ -2,6 +2,67 @@
 
 Status: deferred — recorded for future reconsideration, not adopted
 
+## Amendment — 2026-09-14
+
+A formal mathematical definition of the causal-DAG structure was drafted
+externally and brought here for verification: the graph `G=(V,E)`, a
+causal partial order `≺` defined by path-reachability, a state-resolution
+operator `σ(v)=F(σ₀,TopologicalSort(anc(v)))` folding over a node's causal
+ancestry `anc(v)`, and a reversal-idempotency law
+`F(…,v,v⁻¹,v⁻¹)=F(…,v,v⁻¹)`. This amendment records what verification
+found, in the same spirit as ADR 0003's amendment: the reasoning is kept
+on the record, not silently absorbed into the original text above.
+
+**The DAG structure and partial order (§1–2 of the submitted definition)
+are sound.** `≺`, defined as path-reachability in a DAG, is genuinely a
+strict partial order — irreflexive and transitive by construction, and
+antisymmetric because a DAG has no cycles. This matches standard
+literature (Lamport's happens-before relation; CRDT partial-order
+theory) and is real grounding for this ADR's own claim that the ledger
+already shares the "immutable, append-only, derived state" principle
+with a causal-DAG design.
+
+**State resolution (`σ(v)`) is not well-defined as submitted.** A DAG
+with concurrent (incomparable) nodes has more than one valid topological
+ordering — an antichain of `n` nodes alone admits `n!` linear
+extensions — so `TopologicalSort(anc(v))` names a *set* of orderings, not
+one. `σ(v)=F(σ₀,TopologicalSort(anc(v)))` is therefore ambiguous unless
+one of two things is added: either `F` is required to commute over
+concurrent branches (the join-semilattice requirement from CRDT theory —
+Shapiro et al., "Conflict-free Replicated Data Types"), or a deterministic
+tie-break over concurrent siblings is specified (the way Git's merges, or
+event-sourcing systems with sequence numbers, actually resolve this in
+practice). This is the concrete shape of the "actual algorithm... before
+being stated as fact" bar this ADR's Decision section already set.
+
+**The definition sharpens, rather than resolves, the O(1) question.**
+Appending a new event can be O(1) — nothing about adding a node or edge
+requires touching `anc(v)`. But *resolving* `σ(v)` means folding over the
+entire causal ancestry, which is O(|anc(v)|): the same cost class as this
+ledger's current `balance()` full scan (`app/domain/ledger.py`), which is
+exactly the cost ADR 0003's `BalanceSnapshot` design already exists to
+address. Read carefully, the submitted math argues *for* eventually
+needing something snapshot-like in a causal-DAG version too, not against
+the need for one — it does not establish the "true O(1) write
+performance" claim from the original directive.
+
+**Reversal idempotency as defined (§4) is a different guarantee than this
+ledger's actual one, and the two should not be conflated in future
+references.** The submitted law describes *absorption*: a duplicate
+compensating node `v⁻¹` may exist in the graph, and folding over it twice
+has the same effect as once. This ledger's real mechanism is
+*prevention*: a second reversal is never written at all, rejected via the
+UNIQUE constraint on `transactions.reverses_id`
+(`app/domain/errors.py::AlreadyReversed`). Prevention gives a cleaner
+audit trail — no redundant entry ever exists to be masked — than
+absorption does. Both are legitimate notions of "reversal idempotency" in
+the wider literature; this repo's system implements the first one, not
+the second, and any future document should say which it means.
+
+None of the above changes this ADR's Status or Decision. The direction
+remains deferred; these findings sharpen its open questions rather than
+close them.
+
 ## Context
 
 A proposal (drafted externally, brought here for review) suggested
