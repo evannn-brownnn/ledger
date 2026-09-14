@@ -70,7 +70,10 @@ for why, and `app/db.py::serializable_transaction` for how.
 Uniqueness is enforced by database constraints, never by application checks.
 An application check is a read followed by a write and therefore loses races;
 a UNIQUE constraint does not. This applies to idempotency keys and to the
-"reverse only once" rule.
+"reverse only once" rule. An optional single-process fast path may sit in
+front of the idempotency check (ADR 0005) to skip a database round trip for
+an already-known duplicate, but it is never the arbiter — the constraint
+above remains the sole source of correctness.
 
 ## Scaling path
 
@@ -80,7 +83,7 @@ The system is designed so none of these are retrofits:
 |---|---|---|
 | 1 | Single node, append-only | No hot-row contention to begin with |
 | 2 | Read replicas for balance queries | Reads are derived and tolerate staleness |
-| 3 | Monthly range partitions on the journal | Indexes stay small, old data archivable |
+| 3 | Volume-scaled range partitions on the journal (ADR 0004) | Partition width tracks growth without over-partitioning small datasets |
 | 4 | Balance snapshots + incremental sum | Reads become O(recent) instead of O(history) |
 | 5 | Sharded counters for hot accounts | Turns one contended row into N uncontended ones |
 | 6 | Outbox table for event emission | No commit/publish split-brain |

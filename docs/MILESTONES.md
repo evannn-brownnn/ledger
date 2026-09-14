@@ -21,14 +21,14 @@ different places. Fixed here by not reusing them at all.
 |---|---|---|---|---|
 | 0 | Scaffolding: infra layer, CI, ADRs 0001–0002 | infra | done | stage 1 (implicit) |
 | 1 | Models + domain core — `Account`, `Transaction`, `TransactionLine`, `IdempotencyKey`, `AuditEvent`; `post_transaction`, `reverse_transaction`, `balance`, `trial_balance`, `account_statement`; the 4 stub route bodies | **owner** | **in progress** — all five models done and constrained; domain functions and route bodies still `NotImplementedError` | stage 1 |
-| 1.5 | ADR 0003 — partitioning primary-key shape + snapshot design, decided alongside milestone 1 so the model PK doesn't need retrofitting | **owner + infra** | **done** — ADR accepted 2026-08-26 (amended, two Postgres claims corrected); `(id, created_at)` PKs applied to both journal tables | stages 3, 4 |
+| 1.5 | ADR 0003 — partitioning primary-key shape + snapshot design, decided alongside milestone 1 so the model PK doesn't need retrofitting; granularity finalized in ADR 0004 | **owner + infra** | **done** — ADR accepted 2026-08-26 (amended, two Postgres claims corrected); `(id, created_at)` PKs applied to both journal tables. ADR 0004 (width policy) is documentation-only — no `PARTITION BY RANGE` table exists yet | stages 3, 4 |
 | 2 | API-level HTTP test suite | infra | not started | — |
 | 3 | Concurrency proof — the three non-skipped tests in `tests/test_concurrency.py`; optional `withdraw()` / `InsufficientFunds` stretch | **owner** | not started | stage 1 |
 | 4 | Service-to-service API-key auth | infra | not started | — |
 | 5 | Trial-balance reconciliation job + alerting | infra | not started | — |
 | 6 | Pre-commit, dependency hygiene, Docker build fix | infra | done | — |
 | 7 | Docs closure — this file finalized, load-test numbers recorded, diagrams reconciled | infra | not started | — |
-| 8 (stretch, not default scope) | Any of: read replicas, monthly partitions, balance snapshots, sharded counters, outbox table | owner's call | not started | stages 2–6 |
+| 8 (stretch, not default scope) | Any of: read replicas, volume-scaled partitions (ADR 0004), balance snapshots, sharded counters, outbox table | owner's call | not started | stages 2–6 |
 
 ## Notes
 
